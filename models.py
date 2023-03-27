@@ -7,6 +7,10 @@ from keras import layers
 class TransformerEncoder(layers.Layer):
     """A deep neural network using attention mechanism to encode the input sequence data.
 
+    The model is a simplified version of the transformer architecture mentioned in the original paper
+    https://arxiv.org/pdf/1706.03762v5.pdf
+    This model encodes the given sequence to a high-dimensional numeric data.
+
     Attribute:
         embed_dim: An integer size of the input token vector
         dense_dim: An integer size of the inner dense layer
@@ -53,6 +57,10 @@ class TransformerEncoder(layers.Layer):
 class PositionalEmbedding(layers.Layer):
     """An embedding layer with token position being considered.
 
+    The embedding layer is responsible to find the similarity between tokens,
+    also this layer considers the position of each token in the original input
+    sequence.
+
     Attributes:
         sequence_length: An integer length of the input sequence
         input_dim: An integer of the dimension of the input sequence
@@ -90,6 +98,9 @@ class PositionalEmbedding(layers.Layer):
         return config
 
 
+# TODO: Add DeepFM model
+
+
 def main():
     # some test code for the model
     vocab_size = 10000
@@ -98,6 +109,11 @@ def main():
     num_heads = 2
     dense_dim = 32
 
+    # the basic transformer encoder model, the input data will first go through
+    # the position embedding layer which can find the similarity and positional
+    # information of each token. Then, goes through the transformer layer, which
+    # we hope to extract some useful information. Finally (not implemented),
+    # those information will go through DeepFM model
     inputs = keras.Input(shape=(None,), dtype="int64")
     x = PositionalEmbedding(sequence_length, vocab_size, embed_dim)(inputs)
     x = TransformerEncoder(embed_dim, dense_dim, num_heads)(x)
