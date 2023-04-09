@@ -1,2 +1,8 @@
 # exclude pycharm idea settings
 .idea/
+
+# exclude the Glove files as it's too large
+glove/*
+
+# exclude the data directory due the github limitation
+data/*
