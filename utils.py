@@ -12,9 +12,9 @@ class Vectorize:
         words_to_remove: A set of words to be removed during vectorization (stop words, punctuations, etc.)
         vocabulary: A dict of mapping string token to index such like
                     {"hello": 1, "world": 2}
-
                     An empty string "" is placed to 0th place which can be used for padding.
                     A [UNK] indicates the token is not seen before and thus not indexed
+
         inverse_vocabulary: A dict of mapping index to string token, the inverse version of vocabulary such like
                     {1: "hello", 2: "world"}
     """
