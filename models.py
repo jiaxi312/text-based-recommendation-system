@@ -2,6 +2,42 @@ import keras
 import numpy as np
 
 from keras import layers
+from keras_resnet.models import ResNet1D34
+
+
+class TextFeatureExtractorLayer(layers.Layer):
+    """A deep neural network layer to extract features from text data using Resnet architecture.
+
+    This layer uses the modified version of Resnet network for 1D input data. It uses the open-source network from
+    keras-resnet.
+
+    Source: https://github.com/broadinstitute/keras-resnet
+
+    Attributes:
+        input_dim: A tuple of integers representing the dimension of input data
+        output_dim: An integer of the number of features for the final output
+    """
+
+    def __init__(self, input_dim, output_dim, **kwargs):
+        super().__init__(**kwargs)
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.resnet_layer = ResNet1D34(layers.Input(shape=input_dim), include_top=False)
+        self.fc_layer = keras.Sequential(
+            [layers.GlobalAveragePooling1D(),
+             layers.Dropout(0.5),
+             layers.Dense(units=1024, activation='relu'),
+             layers.Dropout(0.5),
+             layers.Dense(units=512, activation='relu'),
+             layers.Dropout(0.5),
+             layers.Dense(units=self.output_dim, activation='relu')
+             ]
+        )
+
+    def call(self, inputs):
+        inputs = self.resnet_layer(inputs)
+        return self.fc_layer(inputs)
 
 
 class GloveEmbedding(layers.Layer):
