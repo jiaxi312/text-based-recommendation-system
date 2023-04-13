@@ -61,10 +61,14 @@ class Vectorize:
             A list of integers of the indicies corresponds to each token in the text
         """
         tokens = self.tokenize(text)
-
-        encoded = [self.vocabulary.get(token, 1) for token in tokens]
-        if length is not None and len(encoded) < length:
-            encoded.extend([0] * (length - len(encoded)))
+        if length is None:
+            length = len(tokens)
+        encoded = []
+        for i in range(length):
+            if i < len(tokens):
+                encoded.append(self.vocabulary.get(tokens[i], 1))
+            else:
+                encoded.append(0)
         return encoded
 
     def decode(self, int_sequence):
@@ -87,16 +91,23 @@ class Vectorize:
 
 
 class GoogleRestaurantsReviewDataset:
-    def __init__(self, fpath='./data/filter_all_t.json'):
+    """A class provides a convient way to load Google Restaurants Review Dataset
+
+    Attributes:
+        fpath: A string of the file path contains this dataset
+        vectorize: A Vectorize object used to encode and decode text data.
+    """
+    def __init__(self, fpath='./data/filter_all_t.json', text_vectorize=None):
         self.fpath = fpath
+        self.vectorize = text_vectorize
         all_raw_data = self.load_google_restaurants_dataset()
 
         (self.train_user_profiles,
-         self.train_test_profiles,
-         self.train_records) = self._build_profiles_from(all_raw_data['train'])
+         self.train_bus_profiles,
+         self.train_records) = self._build_profiles_from(all_raw_data['train'], update_vectorize=True)
 
         (self.test_user_profiles,
-         self.test_test_profiles,
+         self.test_bus_profiles,
          self.test_records) = self._build_profiles_from(all_raw_data['test'])
 
         del all_raw_data
@@ -115,8 +126,7 @@ class GoogleRestaurantsReviewDataset:
             raise FileNotFoundError(
                 f"google restaurants dataset is not found at {self.fpath} \n")
 
-    @staticmethod
-    def _build_profiles_from(raw_data):
+    def _build_profiles_from(self, raw_data, update_vectorize=False):
         """Creates user profiles and business profiles from the raw data.
 
         Returns:
@@ -143,6 +153,9 @@ class GoogleRestaurantsReviewDataset:
             user_profiles[user_id].append(text)
             business_profiles[business_id].append(text)
             records.append((user_id, business_id, rating))
+
+            if self.vectorize is not None and update_vectorize:
+                self.vectorize.update_vocabulary(text)
 
         return user_profiles, business_profiles, records
 
