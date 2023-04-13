@@ -1,4 +1,4 @@
-from utils import Vectorize, GoogleRestaurantsReviewDataset
+from utils import GoogleRestaurantsReviewDataset
 
 
 def main():
