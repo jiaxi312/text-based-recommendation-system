@@ -50,8 +50,16 @@ class Vectorize:
     def encode(self, text, length=None):
         """Encodes the text data into given length based on the token-index mapping.
 
+        Args:
+            text: A string of the text data needed to be encoded
+            length: A integer of the maximum length of the encoded sequence.
+                    The sequence larger than the maximum length will cut of and
+                    the sequence smaller than the maximum length will be padded
+                    with 0.
+
         Returns:
-            A list of integers of the indicies corresponds to each token in the text"""
+            A list of integers of the indicies corresponds to each token in the text
+        """
         tokens = self.tokenize(text)
 
         encoded = [self.vocabulary.get(token, 1) for token in tokens]
