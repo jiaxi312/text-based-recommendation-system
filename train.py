@@ -1,3 +1,9 @@
+import tensorflow as tf
+
+import keras
+from keras.losses import cosine_similarity
+
+from models import TextFeatureExtractorLayer, GloveEmbeddingLayer
 from utils import GoogleRestaurantsReviewDataset
 
 
@@ -14,6 +20,36 @@ def main():
     print(f'Total {test_y.shape} test data\n')
 
     print('Build model')
+    embedding = GloveEmbeddingLayer(num_tokens=len(text_vectorize),
+                                    vocabulary_dict=text_vectorize.vocabulary)
+    resnet = TextFeatureExtractorLayer(input_dim=(dataset.max_seq_length, embedding.embed_dim), output_dim=128)
+
+    user_inputs = keras.Input(shape=(None,), dtype="int64")
+    x = embedding(user_inputs)
+    user_outputs = resnet(x)
+
+    bus_inputs = keras.Input(shape=(None,), dtype="int64")
+    y = embedding(bus_inputs)
+    bus_outputs = resnet(y)
+
+    outputs = -cosine_similarity(user_outputs, bus_outputs, axis=1)
+
+    model = keras.Model([user_inputs, bus_inputs], outputs)
+    model.compile(optimizer='rmsprop', loss='mse')
+    model.summary()
+
+    print('Train the model')
+    checkpoint_path = "./training_1/cp.ckpt"
+
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                     save_weights_only=True,
+                                                     verbose=1)
+    # model.load_weights(checkpoint_path)
+    model.fit([train_X_user, train_X_bus],
+              train_y,
+              epochs=8,
+              validation_data=([test_X_user, test_X_bus], test_y),
+              callbacks=[cp_callback])
 
 
 if __name__ == '__main__':

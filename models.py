@@ -24,9 +24,9 @@ class TextFeatureExtractorLayer(layers.Layer):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.resnet_layer = ResNet1D34(layers.Input(shape=input_dim), include_top=False)
+        self.resnet_layer.layers.pop()
         self.fc_layer = keras.Sequential(
-            [layers.GlobalAveragePooling1D(),
-             layers.Dropout(0.5),
+            [layers.Dropout(0.5),
              layers.Dense(units=1024, activation='relu'),
              layers.Dropout(0.5),
              layers.Dense(units=512, activation='relu'),
@@ -40,7 +40,7 @@ class TextFeatureExtractorLayer(layers.Layer):
         return self.fc_layer(inputs)
 
 
-class GloveEmbedding(layers.Layer):
+class GloveEmbeddingLayer(layers.Layer):
     """A pretrained embedding layer using Glove word matrix.
 
     An embedding layer loaded with the pretrained glove word matrix. The word matrix collects
@@ -50,19 +50,16 @@ class GloveEmbedding(layers.Layer):
 
     """
 
-    def __init__(self, num_tokens, vocab_size, vocabulary_dict, path_to_glove_file='./glove/glove.42B.300d.txt',
+    def __init__(self, num_tokens, vocabulary_dict, path_to_glove_file='./glove/glove.42B.300d.txt',
                  **kwargs):
         super().__init__(**kwargs)
         self.embed_dim = 300
         self.num_tokens = num_tokens
-        self.vocab_size = vocab_size
         self.vocabulary_dict = vocabulary_dict
 
-        self.embedding_index = self._load_embeddings_index(path_to_glove_file)
-        self.embedding_matrix = self._load_embeddings_matrix()
-        del self.embedding_index
+        self.embedding_matrix = self._load_embeddings_matrix(path_to_glove_file)
 
-        self.embedding_layer = layers.Embedding(input_dim=self.vocab_size, output_dim=self.embedding_dim,
+        self.embedding_layer = layers.Embedding(input_dim=self.num_tokens, output_dim=self.embed_dim,
                                                 embeddings_initializer=keras.initializers.Constant(
                                                     self.embedding_matrix),
                                                 trainable=False)
@@ -70,42 +67,23 @@ class GloveEmbedding(layers.Layer):
     def call(self, inputs):
         return self.embedding_layer(inputs)
 
-    @staticmethod
-    def _load_embeddings_index(path_to_glove_file):
+    def _load_embeddings_matrix(self, path_to_glove_file):
         """Loads the token and its corresponding coefficients"""
         try:
-            embeddings_index = {}
+            matrix = np.zeros((self.num_tokens, self.embed_dim))
             with open(path_to_glove_file, 'r') as f:
                 for line in f:
                     word, coefs = line.split(maxsplit=1)
                     coefs = np.fromstring(coefs, "f", sep=" ")
-                    embeddings_index[word] = coefs
-            return embeddings_index
+                    if word in self.vocabulary_dict:
+                        matrix[self.vocabulary_dict[word]] = coefs
+            return matrix
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"\nNo glove file found at {path_to_glove_file} \n"
                 f"Make sure you've downloaded the file at\n"
                 f"https://github.com/stanfordnlp/GloVe#download-pre-trained-word-vectors\n"
                 f"And the path is correct")
-
-    def _load_embeddings_matrix(self):
-        """Convert the embedding vector into matrix based on the vocabulary dict"""
-        hits = 0
-        misses = 0
-        embeddings_matrix = np.zeros((self.num_tokens, self.embedding_dim))
-
-        for word, i in self.vocabulary_dict.items():
-            embedding_vector = self.embeddings_index.get(word)
-            if embedding_vector is not None:
-                # Words not found in embedding index will be all-zeros.
-                # This includes the representation for "padding" and "OOV"
-                embeddings_matrix[i] = embedding_vector
-                hits += 1
-            else:
-                misses += 1
-
-        print("Converted %d words (%d misses)" % (hits, misses))
-        return embeddings_matrix
 
 
 def main():
