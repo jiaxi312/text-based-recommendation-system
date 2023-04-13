@@ -1,7 +1,9 @@
+import json
 import re
 import string
-import json
+import numpy as np
 
+from tqdm import tqdm
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
@@ -97,10 +99,12 @@ class GoogleRestaurantsReviewDataset:
         fpath: A string of the file path contains this dataset
         vectorize: A Vectorize object used to encode and decode text data.
     """
-    def __init__(self, fpath='./data/filter_all_t.json', text_vectorize=None):
+    def __init__(self, fpath='./data/filter_all_t.json', max_seq_length=500):
         self.fpath = fpath
-        self.vectorize = text_vectorize
-        all_raw_data = self.load_google_restaurants_dataset()
+        self.text_vectorize = Vectorize()
+        self.max_seq_length = max_seq_length
+
+        all_raw_data = self._load_google_restaurants_dataset()
 
         (self.train_user_profiles,
          self.train_bus_profiles,
@@ -112,7 +116,36 @@ class GoogleRestaurantsReviewDataset:
 
         del all_raw_data
 
-    def load_google_restaurants_dataset(self):
+    def load_train_or_test_dataset(self, train=True):
+        """Loads the training or testing dataset that can be used to the neural net.
+
+        Returns:
+            X_user: A 2D numpy matrix with each row being an encoded vector of all reviews from
+                    that user in a record
+            X_bus: A 2D numpy matrix with each row being an encoded vector of all reviews for
+                    that restaurant in a record
+            y: A 1D numpy array with the rating for each record. The ratings will be converted to 1
+                if the original rating is 5, -1 otherwise.
+        """
+        user_profiles = self.train_user_profiles if train else self.test_user_profiles
+        bus_profiles = self.train_bus_profiles if train else self.test_bus_profiles
+        records = self.train_records if train else self.test_records
+
+        user_review_vectors, bus_review_vectors, ratings = [], [], []
+        for (user_id, bus_id, rating) in tqdm(records):
+            user_review = np.array(
+                self.text_vectorize.encode(user_profiles[user_id], self.max_seq_length))
+            user_review_vectors.append(user_review)
+
+            business_review = np.array(
+                self.text_vectorize.encode(bus_profiles[bus_id], self.max_seq_length))
+            bus_review_vectors.append(business_review)
+
+            rating = 1 if rating == 5 else -1
+            ratings.append(rating)
+        return np.stack(user_review_vectors), np.stack(bus_review_vectors), np.stack(ratings)
+
+    def _load_google_restaurants_dataset(self):
         """Loads the Google Restaurants Review dataset into memory.
 
         Returns:
@@ -154,8 +187,13 @@ class GoogleRestaurantsReviewDataset:
             business_profiles[business_id].append(text)
             records.append((user_id, business_id, rating))
 
-            if self.vectorize is not None and update_vectorize:
-                self.vectorize.update_vocabulary(text)
+            if update_vectorize:
+                self.text_vectorize.update_vocabulary(text)
+
+        for user_id in user_profiles:
+            user_profiles[user_id] = "".join(user_profiles[user_id])
+        for business_id in business_profiles:
+            business_profiles[business_id] = "".join(business_profiles[business_id])
 
         return user_profiles, business_profiles, records
 
@@ -167,7 +205,8 @@ def main():
     # print(vectorize.encode(test_data[0], length=10))
     # print(vectorize.decode(vectorize.encode(test_data[0], length=10)))
     dataset = GoogleRestaurantsReviewDataset()
-    print(dataset.train_user_profiles)
+    X_user, X_bus, y = dataset.load_train_or_test_dataset(train=True)
+    print(X_user.shape)
 
 
 if __name__ == '__main__':
