@@ -1,5 +1,6 @@
 import re
 import string
+import json
 
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -77,12 +78,49 @@ class Vectorize:
         return re.search('[a-zA-Z]', token) is not None
 
 
+def load_google_restaurants_dataset(train=True, fpath='./data/filter_all_t.json'):
+    """Loads the Google Restaurants Review dataset into memory.
+
+    Args:
+        train: A boolean variable indicate if the train or test dataset needed to be extracted
+        fpath: A string of the file path of the dataset json file
+
+    Returns:
+        A list of tuples where each tuple contains a single review data in a format as:
+        (user_id, business_id, review, rating)
+
+    Raises:
+        FileNotFoundError
+    """
+    try:
+        with open(fpath, 'r') as f:
+            all_raw_data = json.load(f)
+            raw_data = all_raw_data['train'] if train else all_raw_data['test']
+
+            clean_data = []
+            for review in raw_data:
+                user_id = review['user_id']
+                business_id = review['business_id']
+                text = review['review_text']
+                rating = review['rating']
+                clean_data.append((user_id, business_id, text, rating))
+            return clean_data
+
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"google restaurants dataset is not found at {fpath} \n")
+
+
 def main():
-    test_data = ["hello there", "nice to meet you", "there are some stopwords!!"]
-    vectorize = Vectorize()
-    vectorize.make_vocabulary(test_data)
-    print(vectorize.encode(test_data[0], length=10))
-    print(vectorize.decode(vectorize.encode(test_data[0], length=10)))
+    # test_data = ["hello there", "nice to meet you", "there are some stopwords!!"]
+    # vectorize = Vectorize()
+    # vectorize.make_vocabulary(test_data)
+    # print(vectorize.encode(test_data[0], length=10))
+    # print(vectorize.decode(vectorize.encode(test_data[0], length=10)))
+    train_data = load_google_restaurants_dataset()
+    print(train_data[0])
+    test_data = load_google_restaurants_dataset(train=False)
+    print(test_data[0])
 
 
 if __name__ == '__main__':
