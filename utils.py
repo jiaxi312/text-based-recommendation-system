@@ -86,37 +86,65 @@ class Vectorize:
         return re.search('[a-zA-Z]', token) is not None
 
 
-def load_google_restaurants_dataset(train=True, fpath='./data/filter_all_t.json'):
-    """Loads the Google Restaurants Review dataset into memory.
+class GoogleRestaurantsReviewDataset:
+    def __init__(self, fpath='./data/filter_all_t.json'):
+        self.fpath = fpath
+        all_raw_data = self.load_google_restaurants_dataset()
 
-    Args:
-        train: A boolean variable indicate if the train or test dataset needed to be extracted
-        fpath: A string of the file path of the dataset json file
+        (self.train_user_profiles,
+         self.train_test_profiles,
+         self.train_records) = self._build_profiles_from(all_raw_data['train'])
 
-    Returns:
-        A list of tuples where each tuple contains a single review data in a format as:
-        (user_id, business_id, review, rating)
+        (self.test_user_profiles,
+         self.test_test_profiles,
+         self.test_records) = self._build_profiles_from(all_raw_data['test'])
 
-    Raises:
-        FileNotFoundError
-    """
-    try:
-        with open(fpath, 'r') as f:
-            all_raw_data = json.load(f)
-            raw_data = all_raw_data['train'] if train else all_raw_data['test']
+        del all_raw_data
 
-            clean_data = []
-            for review in raw_data:
-                user_id = review['user_id']
-                business_id = review['business_id']
-                text = review['review_text']
-                rating = review['rating']
-                clean_data.append((user_id, business_id, text, rating))
-            return clean_data
+    def load_google_restaurants_dataset(self):
+        """Loads the Google Restaurants Review dataset into memory.
 
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f"google restaurants dataset is not found at {fpath} \n")
+        Returns:
+            all_raw_data: A dict of all the reviews
+        """
+        try:
+            with open(self.fpath, 'r') as f:
+                all_raw_data = json.load(f)
+                return all_raw_data
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"google restaurants dataset is not found at {self.fpath} \n")
+
+    @staticmethod
+    def _build_profiles_from(raw_data):
+        """Creates user profiles and business profiles from the raw data.
+
+        Returns:
+            user_profiles: A dict with key being user_id and value being a list of all reviews
+                            from that user_id
+            business_profiles: A dict with key being business_id and value being a list of all reviews
+                            left for that restaurant
+            records: A list of (user_id, business_id, rating) that keeps track of each record. It will
+                    be used later to generate training and testing data.
+        """
+        user_profiles = {}
+        business_profiles = {}
+        records = []
+        for review in raw_data:
+            user_id = review['user_id']
+            business_id = review['business_id']
+            text = review['review_text']
+            rating = review['rating']
+            if user_id not in user_profiles:
+                user_profiles[user_id] = []
+            if business_id not in business_profiles:
+                business_profiles[business_id] = []
+
+            user_profiles[user_id].append(text)
+            business_profiles[business_id].append(text)
+            records.append((user_id, business_id, rating))
+
+        return user_profiles, business_profiles, records
 
 
 def main():
@@ -125,10 +153,8 @@ def main():
     # vectorize.make_vocabulary(test_data)
     # print(vectorize.encode(test_data[0], length=10))
     # print(vectorize.decode(vectorize.encode(test_data[0], length=10)))
-    train_data = load_google_restaurants_dataset()
-    print(train_data[0])
-    test_data = load_google_restaurants_dataset(train=False)
-    print(test_data[0])
+    dataset = GoogleRestaurantsReviewDataset()
+    print(dataset.train_user_profiles)
 
 
 if __name__ == '__main__':
