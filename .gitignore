@@ -5,4 +5,5 @@
 glove/*
 
 # exclude the data directory due the github limitation
-data/*
+data/filter_all_t.json
+data/processed_testing_data.csv
