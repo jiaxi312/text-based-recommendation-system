@@ -99,20 +99,14 @@ class GoogleRestaurantsReviewDataset:
         fpath: A string of the file path contains this dataset
         vectorize: A Vectorize object used to encode and decode text data.
     """
+
     def __init__(self, fpath='./data/filter_all_t.json', max_seq_length=500):
         self.fpath = fpath
         self.text_vectorize = Vectorize()
         self.max_seq_length = max_seq_length
 
         all_raw_data = self._load_google_restaurants_dataset()
-
-        (self.train_user_profiles,
-         self.train_bus_profiles,
-         self.train_records) = self._build_profiles_from(all_raw_data['train'], update_vectorize=True)
-
-        (self.test_user_profiles,
-         self.test_bus_profiles,
-         self.test_records) = self._build_profiles_from(all_raw_data['test'])
+        self._build_profiles_from(all_raw_data)
 
         del all_raw_data
 
@@ -153,13 +147,15 @@ class GoogleRestaurantsReviewDataset:
         """
         try:
             with open(self.fpath, 'r') as f:
-                all_raw_data = json.load(f)
+                raw_data_json = json.load(f)
+                all_raw_data = raw_data_json['train']
+                all_raw_data.extend(raw_data_json['test'])
                 return all_raw_data
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"google restaurants dataset is not found at {self.fpath} \n")
 
-    def _build_profiles_from(self, raw_data, update_vectorize=False):
+    def _build_profiles_from(self, raw_data):
         """Creates user profiles and business profiles from the raw data.
 
         Returns:
@@ -170,32 +166,52 @@ class GoogleRestaurantsReviewDataset:
             records: A list of (user_id, business_id, rating) that keeps track of each record. It will
                     be used later to generate training and testing data.
         """
-        user_profiles = {}
-        business_profiles = {}
-        records = []
+        self.train_user_profiles, self.train_bus_profiles, self.train_records = {}, {}, []
+        self.test_user_profiles, self.test_bus_profiles, self.test_records = {}, {}, []
         for review in raw_data:
             user_id = review['user_id']
             business_id = review['business_id']
             text = review['review_text']
             rating = review['rating']
-            if user_id not in user_profiles:
-                user_profiles[user_id] = []
-            if business_id not in business_profiles:
-                business_profiles[business_id] = []
-
-            user_profiles[user_id].append(text)
-            business_profiles[business_id].append(text)
-            records.append((user_id, business_id, rating))
-
-            if update_vectorize:
+            if f"{user_id}-{business_id}" in self.test_records:
+                print("Here")
+                self._add_content_to_dict(self.test_user_profiles, user_id, text)
+                self._add_content_to_dict(self.test_bus_profiles, business_id, text)
+                self.test_records.append((user_id, business_id, rating))
+            else:
+                self._add_content_to_dict(self.train_user_profiles, user_id, text)
+                self._add_content_to_dict(self.train_bus_profiles, business_id, text)
+                self.train_records.append((user_id, business_id, rating))
                 self.text_vectorize.update_vocabulary(text)
 
-        for user_id in user_profiles:
-            user_profiles[user_id] = " ".join(user_profiles[user_id])
-        for business_id in business_profiles:
-            business_profiles[business_id] = " ".join(business_profiles[business_id])
+        self._convert_list_to_string(self.train_user_profiles)
+        self._convert_list_to_string(self.train_bus_profiles)
+        self._convert_list_to_string(self.test_user_profiles)
+        self._convert_list_to_string(self.test_bus_profiles)
 
-        return user_profiles, business_profiles, records
+    @staticmethod
+    def _convert_list_to_string(d):
+        for key in d:
+            d[key] = " ".join(d[key])
+
+    @staticmethod
+    def _add_content_to_dict(d, key, value):
+        if key not in d:
+            d[key] = []
+        d[key].append(value)
+
+    @staticmethod
+    def _load_test_only_records():
+        fpath = './data/test_records.txt'
+        test_tuples = set()
+        try:
+            with open(fpath, 'r') as f:
+                next(f)
+                for line in f:
+                    test_tuples.add("-".join(line.split()))
+            return test_tuples
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{fpath} didn't exists")
 
 
 def main():
@@ -205,8 +221,6 @@ def main():
     # print(vectorize.encode(test_data[0], length=10))
     # print(vectorize.decode(vectorize.encode(test_data[0], length=10)))
     dataset = GoogleRestaurantsReviewDataset()
-    X_user, X_bus, y = dataset.load_train_or_test_dataset(train=True)
-    print(X_user.shape)
 
 
 if __name__ == '__main__':
