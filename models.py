@@ -23,21 +23,11 @@ class TextFeatureExtractorLayer(layers.Layer):
 
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.resnet_layer = ResNet1D34(layers.Input(shape=input_dim), include_top=False)
-        self.resnet_layer.layers.pop()
-        self.fc_layer = keras.Sequential(
-            [layers.Dropout(0.5),
-             layers.Dense(units=1024, activation='relu'),
-             layers.Dropout(0.5),
-             layers.Dense(units=512, activation='relu'),
-             layers.Dropout(0.5),
-             layers.Dense(units=self.output_dim, activation='relu')
-             ]
-        )
+        self.resnet_layer = ResNet1D34(layers.Input(shape=input_dim), classes=output_dim)
 
     def call(self, inputs):
         inputs = self.resnet_layer(inputs)
-        return self.fc_layer(inputs)
+        return inputs
 
 
 class GloveEmbeddingLayer(layers.Layer):
@@ -66,6 +56,15 @@ class GloveEmbeddingLayer(layers.Layer):
 
     def call(self, inputs):
         return self.embedding_layer(inputs)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "embed_dim": self.embed_dim,
+                "num_tokens": self.num_tokens,
+            }
+        )
 
     def _load_embeddings_matrix(self, path_to_glove_file):
         """Loads the token and its corresponding coefficients"""

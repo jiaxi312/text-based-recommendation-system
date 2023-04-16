@@ -25,7 +25,7 @@ class Vectorize:
     def __init__(self):
         self.words_to_remove = set(stopwords.words('english')).union(string.punctuation)
         self.vocabulary = {"": 0, "[UNK]": 1}
-        self.inverse_vocabulary = {0: "", "[UNK]": 1}
+        self.inverse_vocabulary = {0: "", 1: "[UNK]"}
 
     def tokenize(self, text):
         """Tokenizes the input text data, including removing stop words and non-letter tokens"""
@@ -191,9 +191,9 @@ class GoogleRestaurantsReviewDataset:
                 self.text_vectorize.update_vocabulary(text)
 
         for user_id in user_profiles:
-            user_profiles[user_id] = "".join(user_profiles[user_id])
+            user_profiles[user_id] = " ".join(user_profiles[user_id])
         for business_id in business_profiles:
-            business_profiles[business_id] = "".join(business_profiles[business_id])
+            business_profiles[business_id] = " ".join(business_profiles[business_id])
 
         return user_profiles, business_profiles, records
 
