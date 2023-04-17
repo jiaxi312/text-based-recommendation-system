@@ -8,14 +8,14 @@ from utils import GoogleRestaurantsReviewDataset
 
 
 def main():
-    dataset = GoogleRestaurantsReviewDataset(max_seq_length=500)
+    max_seq_length = 750
+    dataset = GoogleRestaurantsReviewDataset(max_seq_length=max_seq_length)
     text_vectorize = dataset.text_vectorize
 
     print('Load training data')
     train_X_user, train_X_bus, train_y = dataset.load_train_or_test_dataset(train=True)
     print(f'Total {train_y.shape} training data\n')
 
-    exit(1)
     print('Load test data')
     test_X_user, test_X_bus, test_y = dataset.load_train_or_test_dataset(train=False)
     print(f'Total {test_y.shape} test data\n')

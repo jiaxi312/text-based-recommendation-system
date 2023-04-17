@@ -1,3 +1,4 @@
+import csv
 import json
 import re
 import string
@@ -100,15 +101,14 @@ class GoogleRestaurantsReviewDataset:
         vectorize: A Vectorize object used to encode and decode text data.
     """
 
-    def __init__(self, fpath='./data/filter_all_t.json', max_seq_length=500):
-        self.fpath = fpath
+    def __init__(self, max_seq_length=500):
         self.text_vectorize = Vectorize()
         self.max_seq_length = max_seq_length
 
-        all_raw_data = self._load_google_restaurants_dataset()
-        self._build_profiles_from(all_raw_data)
-
-        del all_raw_data
+        print('Build Training data')
+        self._build_training_data()
+        print('Build Testing data')
+        self._build_testing_data()
 
     def load_train_or_test_dataset(self, train=True):
         """Loads the training or testing dataset that can be used to the neural net.
@@ -121,97 +121,52 @@ class GoogleRestaurantsReviewDataset:
             y: A 1D numpy array with the rating for each record. The ratings will be converted to 1
                 if the original rating is 5, -1 otherwise.
         """
-        user_profiles = self.train_user_profiles if train else self.test_user_profiles
-        bus_profiles = self.train_bus_profiles if train else self.test_bus_profiles
-        records = self.train_records if train else self.test_records
+        user_profiles = self.train_user_reviews if train else self.test_user_reviews
+        bus_profiles = self.train_bus_reviews if train else self.test_bus_reviews
+        records = self.train_ratings if train else self.test_ratings
 
-        user_review_vectors, bus_review_vectors, ratings = [], [], []
-        for (user_id, bus_id, rating) in tqdm(records):
-            user_review = np.array(
-                self.text_vectorize.encode(user_profiles[user_id], self.max_seq_length))
-            user_review_vectors.append(user_review)
+        return np.stack(user_profiles), np.stack(bus_profiles), np.stack(records)
 
-            business_review = np.array(
-                self.text_vectorize.encode(bus_profiles[bus_id], self.max_seq_length))
-            bus_review_vectors.append(business_review)
+    def _build_training_data(self):
+        self.train_user_reviews = []
+        self.train_bus_reviews = []
+        self.train_ratings = []
 
-            rating = 1 if rating == 5 else -1
-            ratings.append(rating)
-        return np.stack(user_review_vectors), np.stack(bus_review_vectors), np.stack(ratings)
+        with open('./data/processed_training_data.csv', 'r') as csvfile:
+            csv_reader = csv.reader(csvfile)
+            next(csv_reader)
+            for row in tqdm(csv_reader):
+                user_reviews = row[-2]
+                bus_reviews = row[-1]
+                rating = 1 if float(row[3]) == 5.0 else -1
 
-    def _load_google_restaurants_dataset(self):
-        """Loads the Google Restaurants Review dataset into memory.
+                self.text_vectorize.update_vocabulary(user_reviews)
+                self.text_vectorize.update_vocabulary(bus_reviews)
 
-        Returns:
-            all_raw_data: A dict of all the reviews
-        """
-        try:
-            with open(self.fpath, 'r') as f:
-                raw_data_json = json.load(f)
-                all_raw_data = raw_data_json['train']
-                all_raw_data.extend(raw_data_json['test'])
-                return all_raw_data
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                f"google restaurants dataset is not found at {self.fpath} \n")
+                self.train_user_reviews.append(
+                    np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length)))
+                self.train_bus_reviews.append(
+                    np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length)))
+                self.train_ratings.append(rating)
 
-    def _build_profiles_from(self, raw_data):
-        """Creates user profiles and business profiles from the raw data.
+    def _build_testing_data(self):
+        self.test_user_reviews = []
+        self.test_bus_reviews = []
+        self.test_ratings = []
 
-        Returns:
-            user_profiles: A dict with key being user_id and value being a list of all reviews
-                            from that user_id
-            business_profiles: A dict with key being business_id and value being a list of all reviews
-                            left for that restaurant
-            records: A list of (user_id, business_id, rating) that keeps track of each record. It will
-                    be used later to generate training and testing data.
-        """
-        self.train_user_profiles, self.train_bus_profiles, self.train_records = {}, {}, []
-        self.test_user_profiles, self.test_bus_profiles, self.test_records = {}, {}, []
-        for review in raw_data:
-            user_id = review['user_id']
-            business_id = review['business_id']
-            text = review['review_text']
-            rating = review['rating']
-            if f"{user_id}-{business_id}" in self.test_records:
-                print("Here")
-                self._add_content_to_dict(self.test_user_profiles, user_id, text)
-                self._add_content_to_dict(self.test_bus_profiles, business_id, text)
-                self.test_records.append((user_id, business_id, rating))
-            else:
-                self._add_content_to_dict(self.train_user_profiles, user_id, text)
-                self._add_content_to_dict(self.train_bus_profiles, business_id, text)
-                self.train_records.append((user_id, business_id, rating))
-                self.text_vectorize.update_vocabulary(text)
+        with open('./data/processed_testing_data.csv', 'r') as csvfile:
+            csv_reader = csv.reader(csvfile)
+            next(csv_reader)
+            for row in tqdm(csv_reader):
+                user_reviews = row[-2]
+                bus_reviews = row[-1]
+                rating = 1 if float(row[3]) == 5.0 else -1
 
-        self._convert_list_to_string(self.train_user_profiles)
-        self._convert_list_to_string(self.train_bus_profiles)
-        self._convert_list_to_string(self.test_user_profiles)
-        self._convert_list_to_string(self.test_bus_profiles)
-
-    @staticmethod
-    def _convert_list_to_string(d):
-        for key in d:
-            d[key] = " ".join(d[key])
-
-    @staticmethod
-    def _add_content_to_dict(d, key, value):
-        if key not in d:
-            d[key] = []
-        d[key].append(value)
-
-    @staticmethod
-    def _load_test_only_records():
-        fpath = './data/test_records.txt'
-        test_tuples = set()
-        try:
-            with open(fpath, 'r') as f:
-                next(f)
-                for line in f:
-                    test_tuples.add("-".join(line.split()))
-            return test_tuples
-        except FileNotFoundError:
-            raise FileNotFoundError(f"{fpath} didn't exists")
+                self.test_user_reviews.append(
+                    np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length)))
+                self.test_bus_reviews.append(
+                    np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length)))
+                self.test_ratings.append(rating)
 
 
 def main():
