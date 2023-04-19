@@ -6,3 +6,7 @@ glove/*
 
 # exclude the data directory due the github limitation
 data/*
+
+# exclude the trained parameters and logs, since it's too large
+logs/*
+training_*/*

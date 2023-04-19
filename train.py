@@ -48,7 +48,7 @@ def main():
                                                      verbose=1)
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='./logs')
-    # model.load_weights(checkpoint_path)
+    model.load_weights(checkpoint_path)
     model.fit([train_X_user, train_X_bus],
               train_y,
               epochs=8,
