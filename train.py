@@ -8,7 +8,7 @@ from utils import GoogleRestaurantsReviewDataset
 
 
 def main():
-    max_seq_length = 750
+    max_seq_length = 500
     dataset = GoogleRestaurantsReviewDataset(max_seq_length=max_seq_length)
     text_vectorize = dataset.text_vectorize
 
