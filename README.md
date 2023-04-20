@@ -11,5 +11,8 @@ https://drive.google.com/drive/folders/12mQApaVDqT98EyMpnznrZ2cBxWIjQHeT?usp=sha
 * Resnet34, max sequence length of 500 and output_dim=64. Train MSE loss=0.8, test MSE loss=0.86
 https://drive.google.com/drive/folders/1-9aarSdtghvkBnx0jOWHdAzrH2PVTl6K?usp=sharing
 
+### Training Logs
+https://drive.google.com/drive/folders/129RV3nV6N25LATleMFAonix8cWdk2J_4?usp=share_link
+
 ### Related Docs
 [Project Proposal](https://docs.google.com/document/d/10vavNdC7yXjfwce8LN01kF1wSG4yts0dIxqrc_5muiA/edit#heading=h.w6aqeztfp8bg)
