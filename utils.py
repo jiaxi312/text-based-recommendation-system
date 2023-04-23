@@ -105,6 +105,9 @@ class GoogleRestaurantsReviewDataset:
         self.text_vectorize = Vectorize()
         self.max_seq_length = max_seq_length
 
+        self.train_tuples = []
+        self.test_tuples = []
+
         print('Build Training data')
         self._build_training_data()
         print('Build Testing data')
@@ -136,6 +139,7 @@ class GoogleRestaurantsReviewDataset:
             csv_reader = csv.reader(csvfile)
             next(csv_reader)
             for row in tqdm(csv_reader):
+                user_id, bus_id = row[1], row[2]
                 user_reviews = row[-2]
                 bus_reviews = row[-1]
                 rating = 1 if float(row[3]) == 5.0 else -1
@@ -143,11 +147,16 @@ class GoogleRestaurantsReviewDataset:
                 self.text_vectorize.update_vocabulary(user_reviews)
                 self.text_vectorize.update_vocabulary(bus_reviews)
 
+                user_review_encoded = np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length))
+                bus_review_encoded = np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length))
+
                 self.train_user_reviews.append(
-                    np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length)))
+                    user_review_encoded)
                 self.train_bus_reviews.append(
-                    np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length)))
+                    bus_review_encoded)
                 self.train_ratings.append(rating)
+
+                self.train_tuples.append((user_id, bus_id, row[3]))
 
     def _build_testing_data(self):
         self.test_user_reviews = []
@@ -158,15 +167,22 @@ class GoogleRestaurantsReviewDataset:
             csv_reader = csv.reader(csvfile)
             next(csv_reader)
             for row in tqdm(csv_reader):
+                user_id, bus_id = row[1], row[2]
                 user_reviews = row[-2]
                 bus_reviews = row[-1]
                 rating = 1 if float(row[3]) == 5.0 else -1
 
+                user_review_encoded = np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length))
+                bus_review_encoded = np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length))
+
                 self.test_user_reviews.append(
-                    np.array(self.text_vectorize.encode(user_reviews, length=self.max_seq_length)))
+                    user_review_encoded)
                 self.test_bus_reviews.append(
-                    np.array(self.text_vectorize.encode(bus_reviews, length=self.max_seq_length)))
+                    bus_review_encoded)
                 self.test_ratings.append(rating)
+
+                self.test_tuples.append((user_id, bus_id, row[3]))
+
 
 
 def main():
