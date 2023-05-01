@@ -1,4 +1,4 @@
-### repo link: https://github.com/jiaxi312/text-based-recommendation-system/edit/main/README.md
+### repo link: https://github.com/jiaxi312/text-based-recommendation-system
 
 ### Required Packages
 * tensorflow
